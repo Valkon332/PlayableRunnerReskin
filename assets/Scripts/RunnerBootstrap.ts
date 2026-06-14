@@ -27,6 +27,7 @@ import { RunnerBalanceScore } from './RunnerBalanceScore';
 import { VictoryConfetti } from './VictoryConfetti';
 import { EnemyRunAnimator } from './EnemyRunAnimator';
 import { RunnerJumpTutorial } from './RunnerJumpTutorial';
+import { OrientationLogoSwitch } from './OrientationLogoSwitch';
 
 const { ccclass, property } = _decorator;
 
@@ -125,8 +126,6 @@ export class RunnerBootstrap extends Component {
 
   private _downloadButton: Node | null = null;
 
-  private _startLogo: Node | null = null;
-
   private _startButtonRoot: Node | null = null;
 
   private _buttonWinnerBaseColor: Color | null = null;
@@ -140,6 +139,8 @@ export class RunnerBootstrap extends Component {
   private _victoryConfetti: VictoryConfetti | null = null;
 
   private _jumpTutorial: RunnerJumpTutorial | null = null;
+
+  private _orientationLogoSwitch: OrientationLogoSwitch | null = null;
 
   private _handAnim: Animation | null = null;
 
@@ -176,6 +177,12 @@ export class RunnerBootstrap extends Component {
     }
     this._damageScanner =
       scene?.getComponentInChildren(RunnerDamageScanner) ?? null;
+    const uiNode = this._findChildByNameCi(scene, 'UI');
+    if (uiNode?.isValid) {
+      this._orientationLogoSwitch =
+        uiNode.getComponent(OrientationLogoSwitch) ??
+        uiNode.addComponent(OrientationLogoSwitch);
+    }
     this._ribbon1 = this.ribbonNode ?? this._findChildByNameCi(scene, 'Ribbon');
     this._ribbon2 = this._findChildByNameCi(scene, 'Ribbon2');
     if (!this.enemyRunAnimator) {
@@ -200,7 +207,6 @@ export class RunnerBootstrap extends Component {
     }
     this._downloadButton =
       this.downloadButton ?? this._findChildByNameCi(scene, 'DownloadButton');
-    this._startLogo = this._findChildByNameCi(scene, 'logo');
     this._startButtonRoot = this._findChildByNameCi(scene, 'Button');
     this._failNodeResolved =
       this.failNode ??
@@ -699,6 +705,7 @@ export class RunnerBootstrap extends Component {
   }
 
   private _presentVictory() {
+    this._jumpTutorial?.dismissText();
     this._showBlackout();
     this._restoreInstallButtonColor();
     this._activateVictoryUi();
@@ -715,6 +722,7 @@ export class RunnerBootstrap extends Component {
   }
 
   private _presentDefeat() {
+    this._jumpTutorial?.dismissText();
     this._stopAllEnemyLoops();
     this._showBlackout();
     this._deactivateVictoryUi();
@@ -748,8 +756,12 @@ export class RunnerBootstrap extends Component {
   }
 
   private _hideDefeatOnlyStartUi() {
-    this._hideNode(this._startLogo);
+    this._orientationLogoSwitch?.hideAll();
     this._hideNode(this._startButtonRoot);
+    if (this._downloadButton) {
+      Tween.stopAllByTarget(this._downloadButton);
+    }
+    this._hideNode(this._downloadButton);
   }
 
   private _prepareResultUiFadeIn() {
