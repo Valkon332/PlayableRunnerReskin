@@ -17,6 +17,7 @@ import {
   tween,
   Tween,
   Vec3,
+  Rect,
   Font,
   assetManager,
 } from 'cc';
@@ -28,6 +29,7 @@ import { VictoryConfetti } from './VictoryConfetti';
 import { EnemyRunAnimator } from './EnemyRunAnimator';
 import { RunnerJumpTutorial } from './RunnerJumpTutorial';
 import { OrientationLogoSwitch } from './OrientationLogoSwitch';
+import { RunnerAudioManager } from './RunnerAudioManager';
 
 const { ccclass, property } = _decorator;
 
@@ -58,6 +60,12 @@ export class RunnerBootstrap extends Component {
 
   @property({ type: Node })
   public ribbonNode: Node | null = null;
+
+  @property({ type: Node })
+  public finishBlockNode: Node | null = null;
+
+  @property
+  public victoryShowDelay = 0.5;
 
   @property({ type: Node })
   public blackoutNode: Node | null = null;
@@ -111,6 +119,12 @@ export class RunnerBootstrap extends Component {
   private _ribbon1Hit = false;
 
   private _ribbon2Hit = false;
+
+  private _finishBlock: Node | null = null;
+
+  private _finishBlockHit = false;
+
+  private _victoryPending = false;
 
   private _victoryShown = false;
 
@@ -185,6 +199,7 @@ export class RunnerBootstrap extends Component {
     }
     this._ribbon1 = this.ribbonNode ?? this._findChildByNameCi(scene, 'Ribbon');
     this._ribbon2 = this._findChildByNameCi(scene, 'Ribbon2');
+    this._finishBlock = this._resolveFinishBlock(scene);
     if (!this.enemyRunAnimator) {
       const animators = scene?.getComponentsInChildren(EnemyRunAnimator) ?? [];
       this.enemyRunAnimator = animators.length > 0 ? animators[0] : null;
@@ -220,11 +235,8 @@ export class RunnerBootstrap extends Component {
       this._findUnder(this._winnerButton, 'effects') ??
       this._findUnder(this._winnerButton, 'effect') ??
       this._findChildByNameCi(scene, 'effect');
-    this._blackout =
-      this.blackoutNode ?? this._findChildByNameCi(scene, 'blackout');
-    if (this._blackout?.isValid) {
-      this._blackout.active = false;
-    }
+    this._blackout = this._resolveBlackout();
+    this._hideBlackout();
     if (!this.handNode) {
       this.handNode = this._findChildByNameCi(scene, 'Hand');
     }
@@ -237,6 +249,7 @@ export class RunnerBootstrap extends Component {
   }
 
   onDestroy() {
+    this.unschedule(this._onVictoryDelayElapsed);
     this._unwireReplayOnButtonSubtree();
     if (this._buttonWinner) {
       Tween.stopAllByTarget(this._buttonWinner);
@@ -260,14 +273,11 @@ export class RunnerBootstrap extends Component {
     if (this._isPlayerDead()) {
       this._defeatShown = true;
       this.runnerWorld?.setScrolling(false);
+      RunnerAudioManager.inst?.setRunning(false);
       this._presentDefeat();
       return;
     }
-    if (
-      !this.runnerWorld?.scrolling ||
-      !this._damageScanner ||
-      !(this._ribbon1?.isValid || this._ribbon2?.isValid)
-    ) {
+    if (!this._damageScanner) {
       return;
     }
     const hitUi = this._damageScanner.getHitUITransform();
@@ -275,34 +285,127 @@ export class RunnerBootstrap extends Component {
       return;
     }
 
-    const r1 = this._ribbon1;
-    const r1Touched =
-      r1?.isValid && !this._ribbon1Hit
-        ? this._finishSpritesTouch(hitUi, r1.getComponent(UITransform))
-        : false;
-    if (r1Touched && r1?.isValid && !this._ribbon1Hit) {
-      this._ribbon1Hit = true;
-      this._stickRibbonToStick(r1);
+    const playerSpriteUi = this._getPlayerSpriteUi(hitUi);
+    if (!playerSpriteUi) {
+      return;
     }
 
-    const r2 = this._ribbon2;
-    const r2Touched =
-      r2?.isValid && !this._ribbon2Hit
-        ? this._finishSpritesTouch(hitUi, r2.getComponent(UITransform))
-        : false;
-    if (r2Touched && r2?.isValid && !this._ribbon2Hit) {
-      this._ribbon2Hit = true;
-      this._stickRibbonToStick(r2);
+    const canCheckRibbons =
+      !this._victoryShown &&
+      (this.runnerWorld?.scrolling || this._victoryPending);
+    if (canCheckRibbons) {
+      const r1 = this._ribbon1;
+      if (r1?.isValid && !this._ribbon1Hit) {
+        const r1Ui = r1.getComponent(UITransform);
+        if (r1Ui && this._finishSpritesTouch(playerSpriteUi, r1Ui)) {
+          this._ribbon1Hit = true;
+          this._dropRibbonOnTouch(r1);
+        }
+      }
+
+      const r2 = this._ribbon2;
+      if (r2?.isValid && !this._ribbon2Hit) {
+        const r2Ui = r2.getComponent(UITransform);
+        if (r2Ui && this._finishSpritesTouch(playerSpriteUi, r2Ui)) {
+          this._ribbon2Hit = true;
+          this._dropRibbonOnTouch(r2);
+        }
+      }
     }
 
-    const victoryReady = this._ribbon1Hit || this._ribbon2Hit;
+  }
 
-    if (!victoryReady) {
+  lateUpdate() {
+    this._checkFinishBlockCollision();
+  }
+
+  private _checkFinishBlockCollision() {
+    if (this._victoryShown || this._defeatShown) {
+      return;
+    }
+    if (this._isPlayerDead()) {
+      return;
+    }
+    if (
+      this._victoryPending ||
+      this._finishBlockHit ||
+      !this._finishBlock?.isValid ||
+      !this.runnerWorld?.scrolling
+    ) {
+      return;
+    }
+    if (!this._damageScanner) {
+      return;
+    }
+    const hitUi = this._damageScanner.getHitUITransform();
+    if (!hitUi) {
+      return;
+    }
+    const playerSpriteUi = this._getPlayerSpriteUi(hitUi);
+    if (!playerSpriteUi) {
+      return;
+    }
+    const finishUi = this._finishBlock.getComponent(UITransform);
+    if (!finishUi) {
+      return;
+    }
+    if (!this._playerTouchesFinishBlock(playerSpriteUi, finishUi)) {
+      return;
+    }
+    this._triggerFinishVictory();
+  }
+
+  private _triggerFinishVictory() {
+    this._finishBlockHit = true;
+    this._victoryPending = true;
+    this.runnerWorld?.setScrolling(false);
+    RunnerAudioManager.inst?.setRunning(false);
+    this.playerAnimator?.stopRunToIdle();
+    const delay = Math.max(0, this.victoryShowDelay);
+    if (delay <= 0) {
+      this._onVictoryDelayElapsed();
+      return;
+    }
+    this.scheduleOnce(this._onVictoryDelayElapsed, delay);
+  }
+
+  private _playerTouchesFinishBlock(
+    playerSpriteUi: UITransform,
+    finishUi: UITransform,
+  ): boolean {
+    const playerBox = this._worldHitBoxInset(
+      playerSpriteUi,
+      Math.max(0, Math.min(0.45, this.finishPlayerInsetX)),
+      Math.max(0, Math.min(0.45, this.finishPlayerInsetY)),
+    );
+    const finishBox = finishUi.getBoundingBoxToWorld();
+    return playerBox.intersects(finishBox);
+  }
+
+  private _worldHitBoxInset(
+    ui: UITransform,
+    insetX: number,
+    insetY: number,
+  ): Rect {
+    const box = ui.getBoundingBoxToWorld();
+    const ix = box.width * insetX;
+    const iy = box.height * insetY;
+    const w = Math.max(0, box.width - ix * 2);
+    const h = Math.max(0, box.height - iy * 2);
+    return new Rect(box.x + ix, box.y + iy, w, h);
+  }
+
+  private _onVictoryDelayElapsed = () => {
+    this._victoryPending = false;
+    if (this._victoryShown || this._defeatShown) {
       return;
     }
     this._victoryShown = true;
-    this.runnerWorld.setScrolling(false);
     this._presentVictory();
+  };
+
+  private _dropRibbonOnTouch(ribbon: Node) {
+    this._pinAndSwingSingleRibbon(ribbon);
   }
 
   private _stickRibbonToStick(ribbon: Node) {
@@ -441,6 +544,8 @@ export class RunnerBootstrap extends Component {
     if (!this._started) {
       this._started = true;
       this._jumpReady = false;
+      RunnerAudioManager.inst?.unlockOnFirstTap();
+      RunnerAudioManager.inst?.setRunning(true);
       this.runnerWorld?.setScrolling(true);
       this.playerAnimator?.enterGameplayRun();
       this._startAllEnemyLoops();
@@ -575,21 +680,32 @@ export class RunnerBootstrap extends Component {
   }
 
   private _finishSpritesTouch(
-    playerHitUi: UITransform,
-    ribbonUi: UITransform | null,
+    playerSpriteUi: UITransform,
+    targetUi: UITransform | null,
   ): boolean {
-    if (!ribbonUi) {
+    if (!targetUi) {
       return false;
     }
-    const playerUi = this._spriteUiFrom(playerHitUi);
-    const ribbonSpriteUi = this._spriteUiFrom(ribbonUi);
+    const targetSpriteUi = this._spriteUiFrom(targetUi);
     const ac = this._uiWorldCornersInset(
-      playerUi,
+      playerSpriteUi,
       Math.max(0, Math.min(0.45, this.finishPlayerInsetX)),
       Math.max(0, Math.min(0.45, this.finishPlayerInsetY)),
     );
-    const bc = this._uiWorldCorners(ribbonSpriteUi);
+    const bc = this._uiWorldCorners(targetSpriteUi);
     return !this._hasSeparatingAxis(ac, bc) && !this._hasSeparatingAxis(bc, ac);
+  }
+
+  private _getPlayerSpriteUi(playerRootUi: UITransform): UITransform | null {
+    const playerNode = playerRootUi.node;
+    const idle = playerNode.getChildByName('PlayerIdle');
+    if (idle?.isValid) {
+      const idleUi = idle.getComponent(UITransform);
+      if (idleUi && idle.getComponent(Sprite)) {
+        return idleUi;
+      }
+    }
+    return this._spriteUiFrom(playerRootUi);
   }
 
   private _spriteUiFrom(ui: UITransform): UITransform {
@@ -705,6 +821,7 @@ export class RunnerBootstrap extends Component {
   }
 
   private _presentVictory() {
+    RunnerAudioManager.inst?.playWin();
     this._jumpTutorial?.dismissText();
     this._showBlackout();
     this._restoreInstallButtonColor();
@@ -722,6 +839,7 @@ export class RunnerBootstrap extends Component {
   }
 
   private _presentDefeat() {
+    RunnerAudioManager.inst?.playLose();
     this._jumpTutorial?.dismissText();
     this._stopAllEnemyLoops();
     this._showBlackout();
@@ -848,32 +966,66 @@ export class RunnerBootstrap extends Component {
   }
 
   private _showBlackout() {
-    const b =
-      this._blackout ??
-      this.blackoutNode ??
-      this._findChildByNameCi(this.node.scene, 'blackout');
+    const b = this._resolveBlackout();
     if (!b?.isValid) {
       return;
     }
     this._blackout = b;
-    const main = this.node;
-    if (b.parent === main) {
-      let ws: Node | null = null;
-      const kids = main.children;
-      for (let i = 0; i < kids.length; i++) {
-        const c = kids[i];
-        if (c.name.toLowerCase() === 'worldscroll') {
-          ws = c;
-          break;
-        }
-      }
-      if (ws?.isValid) {
-        b.setSiblingIndex(ws.getSiblingIndex() + 1);
-      } else {
-        b.setSiblingIndex(Math.max(0, main.children.length - 1));
-      }
+    const ui = b.parent;
+    if (ui?.isValid && ui.name.toLowerCase() === 'ui') {
+      const afterCamera = Math.min(1, Math.max(0, ui.children.length - 1));
+      b.setSiblingIndex(afterCamera);
     }
+    const visual = b.children.length > 0 ? b.children[0] : b;
+    let op = visual.getComponent(UIOpacity);
+    if (!op) {
+      op = visual.addComponent(UIOpacity);
+    }
+    op.opacity = 150;
+    visual.active = true;
     b.active = true;
+  }
+
+  private _hideBlackout() {
+    const b = this._blackout ?? this._resolveBlackout();
+    if (!b?.isValid) {
+      return;
+    }
+    this._blackout = b;
+    b.active = false;
+  }
+
+  private _resolveFinishBlock(scene: Node | null): Node | null {
+    if (this.finishBlockNode?.isValid) {
+      return this.finishBlockNode;
+    }
+    const ui = this._findChildByNameCi(scene, 'UI');
+    const underUi =
+      this._findUnder(ui, 'FinishBlock') ?? this._findUnder(ui, 'finishBlock');
+    if (underUi?.isValid) {
+      return underUi;
+    }
+    const finish = this._findChildByNameCi(scene, 'Finish');
+    const underFinish =
+      this._findUnder(finish, 'FinishBlock') ??
+      this._findUnder(finish, 'finishBlock') ??
+      this._findUnder(finish, 'FinishBack');
+    if (underFinish?.isValid) {
+      return underFinish;
+    }
+    return this._findChildByNameCi(scene, 'FinishBlock');
+  }
+
+  private _resolveBlackout(): Node | null {
+    if (this.blackoutNode?.isValid) {
+      return this.blackoutNode;
+    }
+    const ui = this._findChildByNameCi(this.node.scene, 'UI');
+    const underUi = this._findUnder(ui, 'Blackout');
+    if (underUi?.isValid) {
+      return underUi;
+    }
+    return this._findChildByNameCi(this.node.scene, 'blackout');
   }
 
   private _ensureResultTitles(mainText: string, subText: string) {

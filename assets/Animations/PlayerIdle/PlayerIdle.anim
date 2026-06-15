@@ -11,21 +11,18 @@
     "speed": 1,
     "wrapMode": 2,
     "enableTrsBlending": false,
-    "_duration": 1.5166666666666666,
+    "_duration": 1.2166666666666666,
     "_hash": 500763545,
     "_tracks": [
       {
         "__id__": 1
-      },
-      {
-        "__id__": 7
       }
     ],
     "_exoticAnimation": null,
     "_events": [],
     "_embeddedPlayers": [],
     "_additiveSettings": {
-      "__id__": 18
+      "__id__": 7
     },
     "_auxiliaryCurveEntries": []
   },
@@ -79,225 +76,46 @@
       0.75,
       0.9,
       1.05,
-      1.2,
-      1.35,
-      1.5
+      1.2
     ],
     "_values": [
       {
-        "__uuid__": "3ffdd080-e051-4cb9-b3be-d54236b0d117@bb5ca",
+        "__uuid__": "39931a6a-ecfb-46cd-96d6-b97730f7b548@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "3ffdd080-e051-4cb9-b3be-d54236b0d117@9597b",
+        "__uuid__": "2e01304d-77b4-4a5b-a1f8-92e6c38bd8ac@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "3ffdd080-e051-4cb9-b3be-d54236b0d117@1d8b9",
+        "__uuid__": "b7c0f661-e589-488f-8ece-45b4ba9b289d@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "3ffdd080-e051-4cb9-b3be-d54236b0d117@1f736",
+        "__uuid__": "9f6ded22-b9fe-4351-854e-3279a49cf540@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "3ffdd080-e051-4cb9-b3be-d54236b0d117@59fc6",
+        "__uuid__": "bbecbe75-722f-492b-8d26-10aaca8d8e15@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "3ffdd080-e051-4cb9-b3be-d54236b0d117@88761",
+        "__uuid__": "d0488c83-cfd8-4a32-9642-325c4ae29cab@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "3ffdd080-e051-4cb9-b3be-d54236b0d117@93f59",
+        "__uuid__": "df0c57ef-b21e-4e35-83aa-146b993f07ac@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "3ffdd080-e051-4cb9-b3be-d54236b0d117@97072",
+        "__uuid__": "0acdae62-67d6-4d4d-ba16-ce75a6620b50@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "3ffdd080-e051-4cb9-b3be-d54236b0d117@eeaa6",
-        "__expectedType__": "cc.SpriteFrame"
-      },
-      {
-        "__uuid__": "3ffdd080-e051-4cb9-b3be-d54236b0d117@baafa",
-        "__expectedType__": "cc.SpriteFrame"
-      },
-      {
-        "__uuid__": "3ffdd080-e051-4cb9-b3be-d54236b0d117@c8223",
+        "__uuid__": "4b35eb14-3e54-4a44-a123-82241f466d4e@f9941",
         "__expectedType__": "cc.SpriteFrame"
       }
     ]
-  },
-  {
-    "__type__": "cc.animation.VectorTrack",
-    "_binding": {
-      "__type__": "cc.animation.TrackBinding",
-      "path": {
-        "__id__": 8
-      },
-      "proxy": null
-    },
-    "_channels": [
-      {
-        "__id__": 10
-      },
-      {
-        "__id__": 12
-      },
-      {
-        "__id__": 14
-      },
-      {
-        "__id__": 16
-      }
-    ],
-    "_nComponents": 3
-  },
-  {
-    "__type__": "cc.animation.TrackPath",
-    "_paths": [
-      {
-        "__id__": 9
-      },
-      "scale"
-    ]
-  },
-  {
-    "__type__": "cc.animation.HierarchyPath",
-    "path": "PlayerIdle"
-  },
-  {
-    "__type__": "cc.animation.Channel",
-    "_curve": {
-      "__id__": 11
-    }
-  },
-  {
-    "__type__": "cc.RealCurve",
-    "_times": [],
-    "_values": [],
-    "preExtrapolation": 1,
-    "postExtrapolation": 1
-  },
-  {
-    "__type__": "cc.animation.Channel",
-    "_curve": {
-      "__id__": 13
-    }
-  },
-  {
-    "__type__": "cc.RealCurve",
-    "_times": [
-      0,
-      0.8333333333333334,
-      1.5
-    ],
-    "_values": [
-      {
-        "__type__": "cc.RealKeyframeValue",
-        "interpolationMode": 0,
-        "tangentWeightMode": 0,
-        "value": 1,
-        "rightTangent": 0,
-        "rightTangentWeight": 1,
-        "leftTangent": 0,
-        "leftTangentWeight": 1,
-        "easingMethod": 0,
-        "__editorExtras__": {
-          "broken": null
-        }
-      },
-      {
-        "__type__": "cc.RealKeyframeValue",
-        "interpolationMode": 0,
-        "tangentWeightMode": 0,
-        "value": 0.9900000095367432,
-        "rightTangent": 0,
-        "rightTangentWeight": 1,
-        "leftTangent": 0,
-        "leftTangentWeight": 1,
-        "easingMethod": 0,
-        "__editorExtras__": {
-          "broken": null
-        }
-      },
-      {
-        "__type__": "cc.RealKeyframeValue",
-        "interpolationMode": 0,
-        "tangentWeightMode": 0,
-        "value": 1,
-        "rightTangent": 0,
-        "rightTangentWeight": 1,
-        "leftTangent": 0,
-        "leftTangentWeight": 1,
-        "easingMethod": 0,
-        "__editorExtras__": {
-          "broken": null
-        }
-      }
-    ],
-    "preExtrapolation": 1,
-    "postExtrapolation": 1
-  },
-  {
-    "__type__": "cc.animation.Channel",
-    "_curve": {
-      "__id__": 15
-    }
-  },
-  {
-    "__type__": "cc.RealCurve",
-    "_times": [
-      0,
-      1.5
-    ],
-    "_values": [
-      {
-        "__type__": "cc.RealKeyframeValue",
-        "interpolationMode": 0,
-        "tangentWeightMode": 0,
-        "value": 1,
-        "rightTangent": 0,
-        "rightTangentWeight": 1,
-        "leftTangent": 0,
-        "leftTangentWeight": 1,
-        "easingMethod": 0,
-        "__editorExtras__": {
-          "broken": null
-        }
-      },
-      {
-        "__type__": "cc.RealKeyframeValue",
-        "interpolationMode": 0,
-        "tangentWeightMode": 0,
-        "value": 1,
-        "rightTangent": 0,
-        "rightTangentWeight": 1,
-        "leftTangent": 0,
-        "leftTangentWeight": 1,
-        "easingMethod": 0,
-        "__editorExtras__": {
-          "broken": null
-        }
-      }
-    ],
-    "preExtrapolation": 1,
-    "postExtrapolation": 1
-  },
-  {
-    "__type__": "cc.animation.Channel",
-    "_curve": {
-      "__id__": 17
-    }
-  },
-  {
-    "__type__": "cc.RealCurve",
-    "_times": [],
-    "_values": [],
-    "preExtrapolation": 1,
-    "postExtrapolation": 1
   },
   {
     "__type__": "cc.AnimationClipAdditiveSettings",

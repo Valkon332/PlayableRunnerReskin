@@ -1,5 +1,16 @@
-import { _decorator, Animation, AnimationClip, Component } from 'cc';
+import {
+  _decorator,
+  Animation,
+  AnimationClip,
+  Color,
+  Component,
+  Node,
+  Sprite,
+  tween,
+  Tween,
+} from 'cc';
 import { RunnerHealth } from './RunnerHealth';
+import { RunnerAudioManager } from './RunnerAudioManager';
 
 const { ccclass, property } = _decorator;
 
@@ -51,6 +62,10 @@ export class PlayerRunnerAnimator extends Component {
 
   private _jumpAir = 0;
 
+  private _playerSprite: Sprite | null = null;
+
+  private readonly _baseSpriteColor = new Color(255, 255, 255, 255);
+
   onLoad() {
     if (!this.anim) {
       this.anim =
@@ -60,6 +75,66 @@ export class PlayerRunnerAnimator extends Component {
     if (!this.health) {
       this.health = this.getComponent(RunnerHealth);
     }
+    this._cachePlayerSprite();
+  }
+
+  private _cachePlayerSprite() {
+    const idle = this._findChildByName(this.node, 'PlayerIdle');
+    const sprite =
+      idle?.getComponent(Sprite) ??
+      this.node.getComponentInChildren(Sprite);
+    if (!sprite?.isValid) {
+      return;
+    }
+    this._playerSprite = sprite;
+    this._baseSpriteColor.set(sprite.color);
+  }
+
+  private _findChildByName(root: Node, name: string): Node | null {
+    const key = name.toLowerCase().replace(/\s+/g, '');
+    const visit = (n: Node): Node | null => {
+      if (n.name.toLowerCase().replace(/\s+/g, '') === key) {
+        return n;
+      }
+      const kids = n.children;
+      for (let i = 0; i < kids.length; i++) {
+        const hit = visit(kids[i]);
+        if (hit) {
+          return hit;
+        }
+      }
+      return null;
+    };
+    return visit(root);
+  }
+
+  private _resetPlayerSpriteColor() {
+    const sp = this._playerSprite;
+    if (!sp?.isValid) {
+      this._cachePlayerSprite();
+    }
+    const sprite = this._playerSprite;
+    if (!sprite?.isValid) {
+      return;
+    }
+    Tween.stopAllByTarget(sprite);
+    sprite.color = this._baseSpriteColor;
+  }
+
+  private _playHitColorFlash(duration: number) {
+    const sp = this._playerSprite;
+    if (!sp?.isValid) {
+      return;
+    }
+    Tween.stopAllByTarget(sp);
+    const hitColor = new Color(255, 70, 70, 255);
+    const flashIn = Math.max(0.03, duration * 0.25);
+    const flashOut = Math.max(0.05, duration - flashIn);
+    tween(sp)
+      .to(flashIn, { color: hitColor })
+      .to(flashOut, { color: this._baseSpriteColor })
+      .call(() => this._resetPlayerSpriteColor())
+      .start();
   }
 
   start() {
@@ -95,6 +170,7 @@ export class PlayerRunnerAnimator extends Component {
     this._jumpElapsed = 0;
     this._jumpAir = Math.max(0.001, air);
     this._jumpMotion = this.jumpHeight > 0;
+    RunnerAudioManager.inst?.playJump();
     this._playClip(this.jumpClipName, false);
     const jst = this.anim.getState(this.jumpClipName);
     if (jst && jst.duration > 0) {
@@ -134,11 +210,34 @@ export class PlayerRunnerAnimator extends Component {
     this.node.setPosition(p.x, this._jumpBaseY, p.z);
   }
 
+  public stopRunToIdle() {
+    if (!this.anim) {
+      return;
+    }
+    this.unschedule(this._finishHitWindow);
+    this.unscheduleAllCallbacks();
+    this._resetPlayerSpriteColor();
+    this._gameplay = false;
+    this._busy = false;
+    const landY = this._jumpMotion ? this._jumpBaseY : this.node.position.y;
+    this._jumpMotion = false;
+    const p = this.node.position;
+    this.node.setPosition(p.x, landY, p.z);
+    this._playClip(this.idleClipName, true);
+    const st = this.anim.getState(this.idleClipName);
+    if (st) {
+      const s = this.idlePlaybackSpeed;
+      st.speed = s > 0 ? s : 1;
+    }
+  }
+
   public playClipLoop(clipName: string) {
     if (!this.anim || !clipName) {
       return;
     }
+    this.unschedule(this._finishHitWindow);
     this.unscheduleAllCallbacks();
+    this._resetPlayerSpriteColor();
     this._gameplay = false;
     this._busy = false;
     const landY = this._jumpMotion ? this._jumpBaseY : this.node.position.y;
@@ -162,12 +261,26 @@ export class PlayerRunnerAnimator extends Component {
     }
   }
 
+  private _finishHitWindow = () => {
+    const st = this.anim?.getState(this.hitClipName);
+    if (st) {
+      st.speed = 1;
+    }
+    this._resetPlayerSpriteColor();
+    this._busy = false;
+    if (this._canResumeRun()) {
+      this._playClip(this.runClipName, true);
+    }
+  };
+
   public playHitThenResume(onComplete?: () => void) {
     if (!this.anim) {
       onComplete?.();
       return;
     }
+    this.unschedule(this._finishHitWindow);
     this._busy = true;
+    RunnerAudioManager.inst?.playHit();
     this._playClip(this.hitClipName, false);
     const st = this.anim.getState(this.hitClipName);
     if (!st) {
@@ -181,12 +294,9 @@ export class PlayerRunnerAnimator extends Component {
     } else {
       st.speed = 1;
     }
+    this._playHitColorFlash(window);
     this.scheduleOnce(() => {
-      st.speed = 1;
-      this._busy = false;
-      if (this._canResumeRun()) {
-        this._playClip(this.runClipName, true);
-      }
+      this._finishHitWindow();
       onComplete?.();
     }, window);
   }

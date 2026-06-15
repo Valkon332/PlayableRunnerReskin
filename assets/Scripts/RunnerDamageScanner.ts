@@ -12,6 +12,7 @@ import { RunnerWorld } from './RunnerWorld';
 import { RunnerHealth } from './RunnerHealth';
 import { RunnerObstacle } from './RunnerObstacle';
 import { PlayerRunnerAnimator } from './PlayerRunnerAnimator';
+import { RunnerAudioManager } from './RunnerAudioManager';
 
 const { ccclass, property } = _decorator;
 
@@ -118,6 +119,7 @@ export class RunnerDamageScanner extends Component {
   private _applyDamage(obs: RunnerObstacle) {
     this.health?.takeDamage(obs.damage);
     this._invuln = this.invulnDuration;
+    RunnerAudioManager.inst?.playHurt();
     this.animator?.playHitThenResume();
   }
 
